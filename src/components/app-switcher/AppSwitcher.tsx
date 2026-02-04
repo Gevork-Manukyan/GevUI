@@ -2,11 +2,17 @@ import {
   type ReactNode,
   Children,
   useMemo,
-  useCallback,
   useRef,
   useEffect,
+  useCallback,
 } from "react"
-import { motion, useMotionValue } from "motion/react"
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  useMotionValueEvent,
+  useDragControls,
+} from "motion/react"
 import { STEP_WIDTH, SCALE_FACTOR } from "./utils"
 import { Rail } from "./Rail"
 
@@ -26,22 +32,30 @@ export function AppSwitcher({
     [children],
   )
   const n = items.length
-  const dragOffset = useMotionValue(0)
+  const scrollOffset = useMotionValue(0)
   const overlayX = useMotionValue(0)
-
-  const onDrag = useCallback(
-    (_: PointerEvent, info: { delta: { x: number } }) => {
-      dragOffset.set(dragOffset.get() - info.delta.x)
-      overlayX.set(0)
-    },
-    [dragOffset, overlayX],
+  const dragOffset = useTransform(
+    [scrollOffset, overlayX],
+    ([s, o]: number[]) => (s ?? 0) - (o ?? 0),
   )
+  const dragControls = useDragControls()
 
-  const onDragEnd = useCallback(() => {
+  const flushOverlay = useCallback(() => {
+    scrollOffset.set(scrollOffset.get() - overlayX.get())
     overlayX.set(0)
-  }, [overlayX])
+  }, [scrollOffset, overlayX])
+
+  useMotionValueEvent(overlayX, "animationComplete", flushOverlay)
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const startDrag = useCallback(
+    (e: React.PointerEvent) => {
+      overlayX.jump(overlayX.get())
+      flushOverlay()
+      dragControls.start(e.nativeEvent)
+    },
+    [dragControls, overlayX, flushOverlay],
+  )
 
   useEffect(() => {
     const el = containerRef.current
@@ -49,12 +63,12 @@ export function AppSwitcher({
     const onWheel = (e: WheelEvent) => {
       if (e.deltaX !== 0) {
         e.preventDefault()
-        dragOffset.set(dragOffset.get() - e.deltaX)
+        scrollOffset.set(scrollOffset.get() - e.deltaX)
       }
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
-  }, [dragOffset])
+  }, [scrollOffset])
 
   if (n === 0) return null
 
@@ -73,11 +87,24 @@ export function AppSwitcher({
         WebkitUserSelect: "none",
       }}
     >
+      <div
+        role="presentation"
+        onPointerDown={startDrag}
+        style={{
+          position: "absolute",
+          inset: 0,
+          cursor: "grab",
+          touchAction: "none",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          zIndex: 1000,
+        }}
+      />
       <motion.div
         drag="x"
         dragElastic={0.1}
-        onDrag={onDrag}
-        onDragEnd={onDragEnd}
+        dragListener={false}
+        dragControls={dragControls}
         style={{
           position: "absolute",
           inset: 0,
@@ -86,7 +113,7 @@ export function AppSwitcher({
           touchAction: "pan-y",
           userSelect: "none",
           WebkitUserSelect: "none",
-          zIndex: 1000,
+          zIndex: 999,
         }}
         whileDrag={{ cursor: "grabbing" }}
       />
