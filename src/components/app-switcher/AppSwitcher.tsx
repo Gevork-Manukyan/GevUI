@@ -16,16 +16,52 @@ import {
 import { STEP_WIDTH, SCALE_FACTOR } from "./utils"
 import { Rail } from "./Rail"
 
+/**
+ * Props for the AppSwitcher infinite carousel component.
+ */
 export type AppSwitcherProps = {
+  /** One or more card elements. Each direct child is rendered as a card in the carousel. */
   children: ReactNode
+  /**
+   * Horizontal distance (px) between card centers. Larger values spread cards apart.
+   * @default 280
+   */
   stepWidth?: number
+  /**
+   * How much cards shrink with distance from center (0 = no shrink, 1 = center only full size).
+   * @default 0.12
+   */
   scaleFactor?: number
+  /**
+   * When true, inverts touch/swipe direction: swipe right moves content right (default: content moves left).
+   * @default false
+   */
+  invertSwipe?: boolean
+  /**
+   * When true, inverts click-and-drag direction: drag right moves content right (default: content moves left).
+   * @default false
+   */
+  invertDrag?: boolean
+  /**
+   * When true, inverts horizontal wheel/trackpad scroll: scroll right moves content right (default: content moves left).
+   * @default false
+   */
+  invertScroll?: boolean
 }
 
+/**
+ * Infinite horizontal carousel with overlapping cards, similar to the iOS App Switcher.
+ * The center card is largest; cards to the left and right scale down and sit behind (lower z-index).
+ * Supports swipe (touch), click-and-drag (mouse), and horizontal wheel scroll, with optional momentum
+ * and per-input direction inversion.
+ */
 export function AppSwitcher({
   children,
   stepWidth = STEP_WIDTH,
   scaleFactor = SCALE_FACTOR,
+  invertSwipe = false,
+  invertDrag = false,
+  invertScroll = false,
 }: AppSwitcherProps) {
   const items = useMemo(
     () => Children.toArray(children),
@@ -34,16 +70,20 @@ export function AppSwitcher({
   const n = items.length
   const scrollOffset = useMotionValue(0)
   const overlayX = useMotionValue(0)
+  const invertPointer = invertSwipe || invertDrag
   const dragOffset = useTransform(
     [scrollOffset, overlayX],
-    ([s, o]: number[]) => (s ?? 0) - (o ?? 0),
+    ([s, o]: number[]) =>
+      (s ?? 0) + (invertPointer ? (o ?? 0) : -(o ?? 0)),
   )
   const dragControls = useDragControls()
 
   const flushOverlay = useCallback(() => {
-    scrollOffset.set(scrollOffset.get() - overlayX.get())
+    scrollOffset.set(
+      scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get()),
+    )
     overlayX.set(0)
-  }, [scrollOffset, overlayX])
+  }, [scrollOffset, overlayX, invertPointer])
 
   useMotionValueEvent(overlayX, "animationComplete", flushOverlay)
 
@@ -63,12 +103,13 @@ export function AppSwitcher({
     const onWheel = (e: WheelEvent) => {
       if (e.deltaX !== 0) {
         e.preventDefault()
-        scrollOffset.set(scrollOffset.get() - e.deltaX)
+        const delta = invertScroll ? e.deltaX : -e.deltaX
+        scrollOffset.set(scrollOffset.get() + delta)
       }
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
-  }, [scrollOffset])
+  }, [scrollOffset, invertScroll])
 
   if (n === 0) return null
 
