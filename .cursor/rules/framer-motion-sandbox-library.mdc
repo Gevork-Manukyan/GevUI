@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+This project is a sandbox and a library that is used to develop self contained components that use the framer motion library. each folder in the 'components' folder represents a self contained component (inside that folder there can be many files that all work together).
