@@ -6,6 +6,7 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useState,
 } from "react"
 import {
   motion,
@@ -14,7 +15,7 @@ import {
   useMotionValueEvent,
   useDragControls,
 } from "motion/react"
-import { STEP_WIDTH, SCALE_FACTOR } from "./utils"
+import { STEP_WIDTH, SCALE_FACTOR, CARD_WIDTH, CARD_HEIGHT } from "./utils"
 import { Rail } from "./Rail"
 
 /**
@@ -48,6 +49,26 @@ export type AppSwitcherProps = {
    * @default false
    */
   invertScroll?: boolean
+  /**
+   * When true, cards fade out near the container edges; when false, opacity is 1 until the viewport edge then 0.
+   * @default true
+   */
+  fade?: boolean
+  /**
+   * Distance from center (in steps, same as layout) at which the fade starts. From center to this distance opacity is 1; from here to the edge, opacity goes to 0.
+   * @default 1
+   */
+  fadeStartDistance?: number
+  /**
+   * Width (px) of each card slot. Should match your card content so the carousel centers correctly.
+   * @default 260
+   */
+  cardWidth?: number
+  /**
+   * Height (px) of each card slot. Should match your card content.
+   * @default 280
+   */
+  cardHeight?: number
   /** Optional CSS class name applied to the root container. */
   className?: string
   /** Optional inline styles applied to the root container. */
@@ -67,9 +88,28 @@ export function AppSwitcher({
   invertSwipe = false,
   invertDrag = false,
   invertScroll = false,
+  fade = true,
+  fadeStartDistance = 1,
+  cardWidth = CARD_WIDTH,
+  cardHeight = CARD_HEIGHT,
   className,
   style,
 }: AppSwitcherProps) {
+  const [containerWidth, setContainerWidth] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) setContainerWidth(entry.contentRect.width)
+    })
+    observer.observe(el)
+    setContainerWidth(el.getBoundingClientRect().width)
+    return () => observer.disconnect()
+  }, [])
+
   const items = useMemo(
     () => Children.toArray(children),
     [children],
@@ -94,7 +134,6 @@ export function AppSwitcher({
 
   useMotionValueEvent(overlayX, "animationComplete", flushOverlay)
 
-  const containerRef = useRef<HTMLDivElement>(null)
   const startDrag = useCallback(
     (pointerEvent: React.PointerEvent) => {
       overlayX.jump(overlayX.get())
@@ -171,6 +210,11 @@ export function AppSwitcher({
         scaleFactor={scaleFactor}
         dragOffset={dragOffset}
         items={items}
+        containerWidth={containerWidth}
+        fade={fade}
+        fadeStartDistance={fadeStartDistance}
+        cardWidth={cardWidth}
+        cardHeight={cardHeight}
       />
     </div>
   )

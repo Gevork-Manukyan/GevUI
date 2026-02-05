@@ -43,8 +43,8 @@ export default function App() {
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>
         App Switcher
       </h1>
-      <div style={{ width: "100%", maxWidth: 480, height: 320, margin: "0 auto" }}>
-        <AppSwitcher stepWidth={100} scaleFactor={0.20}>
+      <div style={{ width: "100%", height: 320, margin: "0 auto", border: "1px solid #ccc" }}>
+        <AppSwitcher stepWidth={200} scaleFactor={0.20}>
           {DEMO_COLORS.map((color, i) => (
             <DemoCard key={i} index={i} color={color} />
           ))}

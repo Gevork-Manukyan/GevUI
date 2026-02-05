@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
 import { motion, type MotionValue } from "motion/react"
-import { CARD_WIDTH } from "./utils"
 import { CardSlot } from "./CardSlot"
 
 export type RailProps = {
@@ -9,6 +8,11 @@ export type RailProps = {
   scaleFactor: number
   dragOffset: MotionValue<number>
   items: ReactNode[]
+  containerWidth: number
+  fade: boolean
+  fadeStartDistance: number
+  cardWidth: number
+  cardHeight: number
 }
 
 export function Rail({
@@ -17,6 +21,11 @@ export function Rail({
   scaleFactor,
   dragOffset,
   items,
+  containerWidth,
+  fade,
+  fadeStartDistance,
+  cardWidth,
+  cardHeight,
 }: RailProps) {
   return (
     <motion.div
@@ -24,10 +33,9 @@ export function Rail({
         position: "absolute",
         left: "50%",
         top: "50%",
-        marginLeft: -CARD_WIDTH / 2,
-        marginTop: -140,
-        width: CARD_WIDTH,
-        height: 280,
+        width: cardWidth,
+        height: cardHeight,
+        transform: "translate(-50%, -50%)",
       }}
     >
       {items.map((child, index) => (
@@ -38,6 +46,11 @@ export function Rail({
           stepWidth={stepWidth}
           scaleFactor={scaleFactor}
           dragOffset={dragOffset}
+          containerWidth={containerWidth}
+          fade={fade}
+          fadeStartDistance={fadeStartDistance}
+          cardWidth={cardWidth}
+          cardHeight={cardHeight}
         >
           {child}
         </CardSlot>
