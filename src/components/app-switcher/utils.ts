@@ -7,8 +7,8 @@ export const BASE_Z = 100
 export function getPositionInWindow(
   childIndex: number,
   center: number,
-  n: number,
+  itemCount: number,
 ): number {
-  return childIndex + n * Math.round((center - childIndex) / n)
+  return childIndex + itemCount * Math.round((center - childIndex) / itemCount)
 }
 

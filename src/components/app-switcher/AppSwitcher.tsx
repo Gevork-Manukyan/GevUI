@@ -1,5 +1,6 @@
 import {
   type ReactNode,
+  type CSSProperties,
   Children,
   useMemo,
   useRef,
@@ -47,6 +48,10 @@ export type AppSwitcherProps = {
    * @default false
    */
   invertScroll?: boolean
+  /** Optional CSS class name applied to the root container. */
+  className?: string
+  /** Optional inline styles applied to the root container. */
+  style?: CSSProperties
 }
 
 /**
@@ -62,19 +67,21 @@ export function AppSwitcher({
   invertSwipe = false,
   invertDrag = false,
   invertScroll = false,
+  className,
+  style,
 }: AppSwitcherProps) {
   const items = useMemo(
     () => Children.toArray(children),
     [children],
   )
-  const n = items.length
+  const itemCount = items.length
   const scrollOffset = useMotionValue(0)
   const overlayX = useMotionValue(0)
   const invertPointer = invertSwipe || invertDrag
   const dragOffset = useTransform(
     [scrollOffset, overlayX],
-    ([s, o]: number[]) =>
-      (s ?? 0) + (invertPointer ? (o ?? 0) : -(o ?? 0)),
+    ([scrollValue, overlayValue]: number[]) =>
+      (scrollValue ?? 0) + (invertPointer ? (overlayValue ?? 0) : -(overlayValue ?? 0)),
   )
   const dragControls = useDragControls()
 
@@ -89,43 +96,41 @@ export function AppSwitcher({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const startDrag = useCallback(
-    (e: React.PointerEvent) => {
+    (pointerEvent: React.PointerEvent) => {
       overlayX.jump(overlayX.get())
       flushOverlay()
-      dragControls.start(e.nativeEvent)
+      dragControls.start(pointerEvent.nativeEvent)
     },
     [dragControls, overlayX, flushOverlay],
   )
 
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      if (e.deltaX !== 0) {
-        e.preventDefault()
-        const delta = invertScroll ? e.deltaX : -e.deltaX
+    const containerElement = containerRef.current
+    if (!containerElement) return
+    const onWheel = (wheelEvent: WheelEvent) => {
+      if (wheelEvent.deltaX !== 0) {
+        wheelEvent.preventDefault()
+        const delta = invertScroll ? wheelEvent.deltaX : -wheelEvent.deltaX
         scrollOffset.set(scrollOffset.get() + delta)
       }
     }
-    el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
+    containerElement.addEventListener("wheel", onWheel, { passive: false })
+    return () => containerElement.removeEventListener("wheel", onWheel)
   }, [scrollOffset, invertScroll])
 
-  if (n === 0) return null
+  if (itemCount === 0) return null
 
   return (
     <div
       ref={containerRef}
+      className={className}
       style={{
         position: "relative",
-        width: "100%",
-        maxWidth: 480,
-        height: 320,
-        margin: "0 auto",
         overflow: "hidden",
         cursor: "grab",
         userSelect: "none",
         WebkitUserSelect: "none",
+        ...style,
       }}
     >
       <div
@@ -159,7 +164,7 @@ export function AppSwitcher({
         whileDrag={{ cursor: "grabbing" }}
       />
       <Rail
-        n={n}
+        itemCount={itemCount}
         stepWidth={stepWidth}
         scaleFactor={scaleFactor}
         dragOffset={dragOffset}

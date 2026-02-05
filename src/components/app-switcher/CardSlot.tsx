@@ -9,7 +9,7 @@ import {
 
 export type CardSlotProps = {
   index: number
-  n: number
+  itemCount: number
   stepWidth: number
   scaleFactor: number
   dragOffset: MotionValue<number>
@@ -18,7 +18,7 @@ export type CardSlotProps = {
 
 export function CardSlot({
   index,
-  n,
+  itemCount,
   stepWidth,
   scaleFactor,
   dragOffset,
@@ -26,23 +26,23 @@ export function CardSlot({
 }: CardSlotProps) {
   const x = useTransform(dragOffset, (offset) => {
     const center = offset / stepWidth
-    const position = getPositionInWindow(index, center, n)
+    const position = getPositionInWindow(index, center, itemCount)
     return (position - center) * stepWidth
   })
   const scale = useTransform(dragOffset, (offset) => {
     const center = offset / stepWidth
-    const position = getPositionInWindow(index, center, n)
+    const position = getPositionInWindow(index, center, itemCount)
     const distance = Math.abs(position - center)
     return Math.max(0.5, 1 - scaleFactor * distance)
   })
   const zIndex = useTransform(dragOffset, (offset) => {
     const center = offset / stepWidth
-    const position = getPositionInWindow(index, center, n)
+    const position = getPositionInWindow(index, center, itemCount)
     return BASE_Z - Math.round(Math.abs(position - center))
   })
   const opacity = useTransform(dragOffset, (offset) => {
     const center = offset / stepWidth
-    const position = getPositionInWindow(index, center, n)
+    const position = getPositionInWindow(index, center, itemCount)
     const distance = Math.abs(position - center)
     return distance <= WINDOW_RADIUS ? 1 : 0
   })

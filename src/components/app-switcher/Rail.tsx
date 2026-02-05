@@ -4,7 +4,7 @@ import { CARD_WIDTH } from "./utils"
 import { CardSlot } from "./CardSlot"
 
 export type RailProps = {
-  n: number
+  itemCount: number
   stepWidth: number
   scaleFactor: number
   dragOffset: MotionValue<number>
@@ -12,7 +12,7 @@ export type RailProps = {
 }
 
 export function Rail({
-  n,
+  itemCount,
   stepWidth,
   scaleFactor,
   dragOffset,
@@ -30,11 +30,11 @@ export function Rail({
         height: 280,
       }}
     >
-      {items.map((child, i) => (
+      {items.map((child, index) => (
         <CardSlot
-          key={i}
-          index={i}
-          n={n}
+          key={index}
+          index={index}
+          itemCount={itemCount}
           stepWidth={stepWidth}
           scaleFactor={scaleFactor}
           dragOffset={dragOffset}
