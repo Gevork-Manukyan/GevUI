@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { motion, useTransform, type MotionValue } from "motion/react"
-import { BASE_Z, getPositionInWindow } from "./utils"
+import { BASE_Z } from "./constants"
+import { getPositionInWindow } from "./utils"
 
 export type CardSlotProps = {
   index: number

@@ -1,1 +1,5 @@
-export { AppSwitcher, type AppSwitcherProps } from "./AppSwitcher"
+export {
+  AppSwitcher,
+  type AppSwitcherItem,
+  type AppSwitcherProps,
+} from "./AppSwitcher"

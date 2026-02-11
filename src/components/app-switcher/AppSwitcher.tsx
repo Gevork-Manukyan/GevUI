@@ -20,16 +20,34 @@ import {
   SCALE_FACTOR,
   CARD_WIDTH,
   CARD_HEIGHT,
-  getCardIndexAtClientX,
-} from "./utils"
+  CLICK_MOVEMENT_THRESHOLD_PX,
+  SWIPE_DOWN_THRESHOLD_PX,
+} from "./constants"
+import { getCardIndexAtClientX } from "./utils"
 import { Rail } from "./Rail"
+
+/**
+ * Item shape when using the `items` prop. Each item defines the card content and optional destination.
+ */
+export type AppSwitcherItem = {
+  /** What is shown in the carousel for this card. */
+  content: ReactNode
+  /** Optional route/URL to navigate to when the card is selected. */
+  path?: string
+  /** Optional component to show when the card is selected (parent decides where/how to render). */
+  component?: ReactNode
+}
 
 /**
  * Props for the AppSwitcher infinite carousel component.
  */
 export type AppSwitcherProps = {
-  /** One or more card elements. Each direct child is rendered as a card in the carousel. */
+  /** One or more card elements. Each direct child is rendered as a card in the carousel. Ignored when `items` is provided. */
   children: ReactNode
+  /**
+   * Optional list of items (content + optional path/component). When provided, cards are derived from items; `children` is ignored.
+   */
+  items?: AppSwitcherItem[]
   /**
    * Horizontal distance (px) between card centers. Larger values spread cards apart.
    * @default 280
@@ -94,6 +112,7 @@ export type AppSwitcherProps = {
  */
 export function AppSwitcher({
   children,
+  items: itemsProp,
   stepWidth = STEP_WIDTH,
   scaleFactor = SCALE_FACTOR,
   invertSwipe = false,
@@ -107,8 +126,6 @@ export function AppSwitcher({
   className,
   style,
 }: AppSwitcherProps) {
-  const CLICK_MOVEMENT_THRESHOLD_PX = 5
-  const SWIPE_DOWN_THRESHOLD_PX = 30
   const [containerWidth, setContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ clientX: number; clientY: number } | null>(null)
@@ -127,11 +144,14 @@ export function AppSwitcher({
     return () => observer.disconnect()
   }, [])
 
-  const items = useMemo(
-    () => Children.toArray(children),
-    [children],
+  const cardContents = useMemo(
+    () =>
+      itemsProp != null
+        ? itemsProp.map((item) => item.content)
+        : Children.toArray(children),
+    [itemsProp, children],
   )
-  const itemCount = items.length
+  const itemCount = cardContents.length
   const scrollOffset = useMotionValue(0)
   const overlayX = useMotionValue(0)
   const invertPointer = invertSwipe || invertDrag
@@ -299,7 +319,7 @@ export function AppSwitcher({
         stepWidth={stepWidth}
         scaleFactor={scaleFactor}
         dragOffset={dragOffset}
-        items={items}
+        items={cardContents}
         containerWidth={containerWidth}
         fade={fade}
         fadeStartDistance={fadeStartDistance}
