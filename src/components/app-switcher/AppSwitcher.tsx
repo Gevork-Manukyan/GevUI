@@ -43,7 +43,7 @@ export type AppSwitcherItem = {
  */
 export type AppSwitcherProps = {
   /** One or more card elements. Each direct child is rendered as a card in the carousel. Ignored when `items` is provided. */
-  children: ReactNode
+  children?: ReactNode
   /**
    * Optional list of items (content + optional path/component). When provided, cards are derived from items; `children` is ignored.
    */
@@ -95,9 +95,9 @@ export type AppSwitcherProps = {
   cardHeight?: number
   /**
    * Called when the user clicks a card (pointer down + up with minimal movement).
-   * Receives the logical card index (0 to itemCount - 1). Not called when the user drags.
+   * Receives the logical card index (0 to itemCount - 1) and, when using the `items` prop, the selected item. Not called when the user drags.
    */
-  onCardSelect?: (index: number) => void
+  onCardSelect?: (index: number, item?: AppSwitcherItem) => void
   /** Optional CSS class name applied to the root container. */
   className?: string
   /** Optional inline styles applied to the root container. */
@@ -205,7 +205,7 @@ export function AppSwitcher({
           scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
         )
         overlayX.set(0)
-        onCardSelect?.(index)
+        onCardSelect?.(index, itemsProp?.[index])
       }
       pointerDownRef.current = null
       wasDragRef.current = false
@@ -217,6 +217,7 @@ export function AppSwitcher({
       invertPointer,
       stepWidth,
       itemCount,
+      itemsProp,
       onCardSelect,
     ],
   )
