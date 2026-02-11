@@ -15,7 +15,13 @@ import {
   useMotionValueEvent,
   useDragControls,
 } from "motion/react"
-import { STEP_WIDTH, SCALE_FACTOR, CARD_WIDTH, CARD_HEIGHT } from "./utils"
+import {
+  STEP_WIDTH,
+  SCALE_FACTOR,
+  CARD_WIDTH,
+  CARD_HEIGHT,
+  getCardIndexAtClientX,
+} from "./utils"
 import { Rail } from "./Rail"
 
 /**
@@ -69,6 +75,11 @@ export type AppSwitcherProps = {
    * @default 280
    */
   cardHeight?: number
+  /**
+   * Called when the user clicks a card (pointer down + up with minimal movement).
+   * Receives the logical card index (0 to itemCount - 1). Not called when the user drags.
+   */
+  onCardSelect?: (index: number) => void
   /** Optional CSS class name applied to the root container. */
   className?: string
   /** Optional inline styles applied to the root container. */
@@ -92,11 +103,16 @@ export function AppSwitcher({
   fadeStartDistance = 1,
   cardWidth = CARD_WIDTH,
   cardHeight = CARD_HEIGHT,
+  onCardSelect,
   className,
   style,
 }: AppSwitcherProps) {
+  const CLICK_MOVEMENT_THRESHOLD_PX = 5
   const [containerWidth, setContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const pointerDownRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  const wasDragRef = useRef(false)
+  const totalMovementRef = useRef(0)
 
   useEffect(() => {
     const el = containerRef.current
@@ -134,13 +150,50 @@ export function AppSwitcher({
 
   useMotionValueEvent(overlayX, "animationComplete", flushOverlay)
 
+  const handleClickOrDragEnd = useCallback(() => {
+    if (!wasDragRef.current && pointerDownRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const totalOffset = scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get())
+      const index = getCardIndexAtClientX(
+        pointerDownRef.current.clientX,
+        { left: rect.left, width: rect.width },
+        totalOffset,
+        stepWidth,
+        itemCount,
+      )
+      scrollOffset.set(
+        scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
+      )
+      overlayX.set(0)
+      onCardSelect?.(index)
+    }
+    pointerDownRef.current = null
+    wasDragRef.current = false
+    totalMovementRef.current = 0
+  }, [
+    scrollOffset,
+    overlayX,
+    invertPointer,
+    stepWidth,
+    itemCount,
+    onCardSelect,
+  ])
+
   const startDrag = useCallback(
     (pointerEvent: React.PointerEvent) => {
       overlayX.jump(overlayX.get())
       flushOverlay()
       dragControls.start(pointerEvent.nativeEvent)
+
+      const onPointerUp = () => {
+        handleClickOrDragEnd()
+        document.removeEventListener("pointerup", onPointerUp)
+        document.removeEventListener("pointercancel", onPointerUp)
+      }
+      document.addEventListener("pointerup", onPointerUp)
+      document.addEventListener("pointercancel", onPointerUp)
     },
-    [dragControls, overlayX, flushOverlay],
+    [dragControls, overlayX, flushOverlay, handleClickOrDragEnd],
   )
 
   useEffect(() => {
@@ -176,7 +229,15 @@ export function AppSwitcher({
     >
       <div
         role="presentation"
-        onPointerDown={startDrag}
+        onPointerDown={(pointerEvent) => {
+          pointerDownRef.current = {
+            clientX: pointerEvent.clientX,
+            clientY: pointerEvent.clientY,
+          }
+          wasDragRef.current = false
+          totalMovementRef.current = 0
+          startDrag(pointerEvent)
+        }}
         style={{
           position: "absolute",
           inset: 0,
@@ -192,6 +253,13 @@ export function AppSwitcher({
         dragElastic={0.1}
         dragListener={false}
         dragControls={dragControls}
+        onDrag={(_event, info) => {
+          totalMovementRef.current += info.delta.x
+          if (Math.abs(totalMovementRef.current) > CLICK_MOVEMENT_THRESHOLD_PX) {
+            wasDragRef.current = true
+          }
+        }}
+        onDragEnd={handleClickOrDragEnd}
         style={{
           position: "absolute",
           inset: 0,

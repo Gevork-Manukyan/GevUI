@@ -44,7 +44,18 @@ export default function App() {
         App Switcher
       </h1>
       <div style={{ width: "100%", height: 320, margin: "0 auto", border: "1px solid #ccc" }}>
-        <AppSwitcher stepWidth={200} scaleFactor={0.20}>
+        <AppSwitcher 
+          stepWidth={200} 
+          invertScroll={true}
+          scaleFactor={0.20}
+          fade={true}
+          fadeStartDistance={1}
+          cardWidth={260}
+          cardHeight={280}
+          onCardSelect={(index) => {
+            console.log("Card selected:", index)
+          }}
+        >
           {DEMO_COLORS.map((color, i) => (
             <DemoCard key={i} index={i} color={color} />
           ))}
