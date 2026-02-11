@@ -108,6 +108,7 @@ export function AppSwitcher({
   style,
 }: AppSwitcherProps) {
   const CLICK_MOVEMENT_THRESHOLD_PX = 5
+  const SWIPE_DOWN_THRESHOLD_PX = 30
   const [containerWidth, setContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ clientX: number; clientY: number } | null>(null)
@@ -150,34 +151,55 @@ export function AppSwitcher({
 
   useMotionValueEvent(overlayX, "animationComplete", flushOverlay)
 
-  const handleClickOrDragEnd = useCallback(() => {
-    if (!wasDragRef.current && pointerDownRef.current && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect()
-      const totalOffset = scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get())
-      const index = getCardIndexAtClientX(
-        pointerDownRef.current.clientX,
-        { left: rect.left, width: rect.width },
-        totalOffset,
-        stepWidth,
-        itemCount,
-      )
-      scrollOffset.set(
-        scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
-      )
-      overlayX.set(0)
-      onCardSelect?.(index)
-    }
-    pointerDownRef.current = null
-    wasDragRef.current = false
-    totalMovementRef.current = 0
-  }, [
-    scrollOffset,
-    overlayX,
-    invertPointer,
-    stepWidth,
-    itemCount,
-    onCardSelect,
-  ])
+  const handleClickOrDragEnd = useCallback(
+    (pointerUpEvent?: PointerEvent) => {
+      const hasPointerUp = pointerUpEvent != null
+      const hasPointerDown = pointerDownRef.current != null
+      const hasContainer = containerRef.current != null
+
+      let shouldSelect: boolean
+      const pointerDown = pointerDownRef.current
+      if (hasPointerUp && pointerDown) {
+        const totalDeltaX = pointerUpEvent.clientX - pointerDown.clientX
+        const totalDeltaY = pointerUpEvent.clientY - pointerDown.clientY
+        const isTap = !wasDragRef.current
+        const isSwipeDown =
+          totalDeltaY > SWIPE_DOWN_THRESHOLD_PX &&
+          totalDeltaY > Math.abs(totalDeltaX)
+        shouldSelect = hasContainer && (isTap || isSwipeDown)
+      } else {
+        shouldSelect = !wasDragRef.current && hasPointerDown && hasContainer
+      }
+
+      if (shouldSelect && pointerDownRef.current && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        const totalOffset = scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get())
+        const index = getCardIndexAtClientX(
+          pointerDownRef.current.clientX,
+          { left: rect.left, width: rect.width },
+          totalOffset,
+          stepWidth,
+          itemCount,
+        )
+        scrollOffset.set(
+          scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
+        )
+        overlayX.set(0)
+        onCardSelect?.(index)
+      }
+      pointerDownRef.current = null
+      wasDragRef.current = false
+      totalMovementRef.current = 0
+    },
+    [
+      scrollOffset,
+      overlayX,
+      invertPointer,
+      stepWidth,
+      itemCount,
+      onCardSelect,
+    ],
+  )
 
   const startDrag = useCallback(
     (pointerEvent: React.PointerEvent) => {
@@ -185,8 +207,8 @@ export function AppSwitcher({
       flushOverlay()
       dragControls.start(pointerEvent.nativeEvent)
 
-      const onPointerUp = () => {
-        handleClickOrDragEnd()
+      const onPointerUp = (event: PointerEvent) => {
+        handleClickOrDragEnd(event)
         document.removeEventListener("pointerup", onPointerUp)
         document.removeEventListener("pointercancel", onPointerUp)
       }
@@ -259,7 +281,7 @@ export function AppSwitcher({
             wasDragRef.current = true
           }
         }}
-        onDragEnd={handleClickOrDragEnd}
+        onDragEnd={() => handleClickOrDragEnd()}
         style={{
           position: "absolute",
           inset: 0,
