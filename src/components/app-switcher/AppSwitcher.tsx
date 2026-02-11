@@ -94,6 +94,12 @@ export type AppSwitcherProps = {
    */
   cardHeight?: number
   /**
+   * When true (default), selecting a card whose item has a `component` hides the rail and shows that component with a Back control.
+   * When false, only onCardSelect is called and the parent handles behavior.
+   * No effect when not using the `items` prop.
+   */
+  showComponentOnSelect?: boolean
+  /**
    * Called when the user clicks a card (pointer down + up with minimal movement).
    * Receives the logical card index (0 to itemCount - 1) and, when using the `items` prop, the selected item. Not called when the user drags.
    */
@@ -122,11 +128,13 @@ export function AppSwitcher({
   fadeStartDistance = 1,
   cardWidth = CARD_WIDTH,
   cardHeight = CARD_HEIGHT,
+  showComponentOnSelect = true,
   onCardSelect,
   className,
   style,
 }: AppSwitcherProps) {
   const [containerWidth, setContainerWidth] = useState(0)
+  const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ clientX: number; clientY: number } | null>(null)
   const wasDragRef = useRef(false)
@@ -205,7 +213,11 @@ export function AppSwitcher({
           scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
         )
         overlayX.set(0)
-        onCardSelect?.(index, itemsProp?.[index])
+        const selectedItem = itemsProp?.[index]
+        onCardSelect?.(index, selectedItem)
+        if (showComponentOnSelect && selectedItem?.component) {
+          setActiveComponent(selectedItem.component)
+        }
       }
       pointerDownRef.current = null
       wasDragRef.current = false
@@ -218,6 +230,7 @@ export function AppSwitcher({
       stepWidth,
       itemCount,
       itemsProp,
+      showComponentOnSelect,
       onCardSelect,
     ],
   )
@@ -255,6 +268,8 @@ export function AppSwitcher({
 
   if (itemCount === 0) return null
 
+  const showComponentView = activeComponent != null
+
   return (
     <div
       ref={containerRef}
@@ -264,69 +279,93 @@ export function AppSwitcher({
         width: "100%",
         height: "100%",
         overflow: "hidden",
-        cursor: "grab",
+        cursor: showComponentView ? "default" : "grab",
         userSelect: "none",
         WebkitUserSelect: "none",
         ...style,
       }}
     >
-      <div
-        role="presentation"
-        onPointerDown={(pointerEvent) => {
-          pointerDownRef.current = {
-            clientX: pointerEvent.clientX,
-            clientY: pointerEvent.clientY,
-          }
-          wasDragRef.current = false
-          totalMovementRef.current = 0
-          startDrag(pointerEvent)
-        }}
-        style={{
-          position: "absolute",
-          inset: 0,
-          cursor: "grab",
-          touchAction: "none",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          zIndex: 1000,
-        }}
-      />
-      <motion.div
-        drag="x"
-        dragElastic={0.1}
-        dragListener={false}
-        dragControls={dragControls}
-        onDrag={(_event, info) => {
-          totalMovementRef.current += info.delta.x
-          if (Math.abs(totalMovementRef.current) > CLICK_MOVEMENT_THRESHOLD_PX) {
-            wasDragRef.current = true
-          }
-        }}
-        onDragEnd={() => handleClickOrDragEnd()}
-        style={{
-          position: "absolute",
-          inset: 0,
-          x: overlayX,
-          cursor: "grab",
-          touchAction: "pan-y",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          zIndex: 999,
-        }}
-        whileDrag={{ cursor: "grabbing" }}
-      />
-      <Rail
-        itemCount={itemCount}
-        stepWidth={stepWidth}
-        scaleFactor={scaleFactor}
-        dragOffset={dragOffset}
-        items={cardContents}
-        containerWidth={containerWidth}
-        fade={fade}
-        fadeStartDistance={fadeStartDistance}
-        cardWidth={cardWidth}
-        cardHeight={cardHeight}
-      />
+      {showComponentView ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setActiveComponent(null)}
+            style={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              zIndex: 1001,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Back
+          </button>
+          <div style={{ width: "100%", height: "100%", overflow: "auto" }}>
+            {activeComponent}
+          </div>
+        </>
+      ) : (
+        <>
+          <div
+            role="presentation"
+            onPointerDown={(pointerEvent) => {
+              pointerDownRef.current = {
+                clientX: pointerEvent.clientX,
+                clientY: pointerEvent.clientY,
+              }
+              wasDragRef.current = false
+              totalMovementRef.current = 0
+              startDrag(pointerEvent)
+            }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              cursor: "grab",
+              touchAction: "none",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              zIndex: 1000,
+            }}
+          />
+          <motion.div
+            drag="x"
+            dragElastic={0.1}
+            dragListener={false}
+            dragControls={dragControls}
+            onDrag={(_event, info) => {
+              totalMovementRef.current += info.delta.x
+              if (Math.abs(totalMovementRef.current) > CLICK_MOVEMENT_THRESHOLD_PX) {
+                wasDragRef.current = true
+              }
+            }}
+            onDragEnd={() => handleClickOrDragEnd()}
+            style={{
+              position: "absolute",
+              inset: 0,
+              x: overlayX,
+              cursor: "grab",
+              touchAction: "pan-y",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              zIndex: 999,
+            }}
+            whileDrag={{ cursor: "grabbing" }}
+          />
+          <Rail
+            itemCount={itemCount}
+            stepWidth={stepWidth}
+            scaleFactor={scaleFactor}
+            dragOffset={dragOffset}
+            items={cardContents}
+            containerWidth={containerWidth}
+            fade={fade}
+            fadeStartDistance={fadeStartDistance}
+            cardWidth={cardWidth}
+            cardHeight={cardHeight}
+          />
+        </>
+      )}
     </div>
   )
 }
