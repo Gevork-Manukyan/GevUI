@@ -9,7 +9,6 @@ import {
   useState,
 } from "react"
 import {
-  motion,
   useMotionValue,
   useTransform,
   useMotionValueEvent,
@@ -20,11 +19,10 @@ import {
   SCALE_FACTOR,
   CARD_WIDTH,
   CARD_HEIGHT,
-  CLICK_MOVEMENT_THRESHOLD_PX,
   SWIPE_DOWN_THRESHOLD_PX,
 } from "./constants"
 import { getCardIndexAtClientX } from "./utils"
-import { Rail } from "./Rail"
+import { RailView } from "./RailView"
 
 /**
  * Item shape when using the `items` prop. Each item defines the card content and optional destination.
@@ -306,65 +304,32 @@ export function AppSwitcher({
           </div>
         </>
       ) : (
-        <>
-          <div
-            role="presentation"
-            onPointerDown={(pointerEvent) => {
-              pointerDownRef.current = {
-                clientX: pointerEvent.clientX,
-                clientY: pointerEvent.clientY,
-              }
-              wasDragRef.current = false
-              totalMovementRef.current = 0
-              startDrag(pointerEvent)
-            }}
-            style={{
-              position: "absolute",
-              inset: 0,
-              cursor: "grab",
-              touchAction: "none",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-              zIndex: 1000,
-            }}
-          />
-          <motion.div
-            drag="x"
-            dragElastic={0.1}
-            dragListener={false}
-            dragControls={dragControls}
-            onDrag={(_event, info) => {
-              totalMovementRef.current += info.delta.x
-              if (Math.abs(totalMovementRef.current) > CLICK_MOVEMENT_THRESHOLD_PX) {
-                wasDragRef.current = true
-              }
-            }}
-            onDragEnd={() => handleClickOrDragEnd()}
-            style={{
-              position: "absolute",
-              inset: 0,
-              x: overlayX,
-              cursor: "grab",
-              touchAction: "pan-y",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-              zIndex: 999,
-            }}
-            whileDrag={{ cursor: "grabbing" }}
-          />
-          <Rail
-            itemCount={itemCount}
-            stepWidth={stepWidth}
-            scaleFactor={scaleFactor}
-            dragOffset={dragOffset}
-            items={cardContents}
-            containerWidth={containerWidth}
-            fade={fade}
-            fadeStartDistance={fadeStartDistance}
-            cardWidth={cardWidth}
-            cardHeight={cardHeight}
-          />
-        </>
+        <RailView
+          onPointerDown={(pointerEvent) => {
+            pointerDownRef.current = {
+              clientX: pointerEvent.clientX,
+              clientY: pointerEvent.clientY,
+            }
+            wasDragRef.current = false
+            totalMovementRef.current = 0
+            startDrag(pointerEvent)
+          }}
+          overlayX={overlayX}
+          dragControls={dragControls}
+          totalMovementRef={totalMovementRef}
+          wasDragRef={wasDragRef}
+          onDragEnd={() => handleClickOrDragEnd()}
+          itemCount={itemCount}
+          stepWidth={stepWidth}
+          scaleFactor={scaleFactor}
+          dragOffset={dragOffset}
+          items={cardContents}
+          containerWidth={containerWidth}
+          fade={fade}
+          fadeStartDistance={fadeStartDistance}
+          cardWidth={cardWidth}
+          cardHeight={cardHeight}
+        />
       )}
     </div>
   )
