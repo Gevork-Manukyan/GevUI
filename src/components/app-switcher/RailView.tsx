@@ -73,7 +73,7 @@ export function RailView({
           inset: 0,
           x: overlayX,
           cursor: "grab",
-          touchAction: "pan-y",
+          touchAction: "pan-x",
           userSelect: "none",
           WebkitUserSelect: "none",
           zIndex: 999,

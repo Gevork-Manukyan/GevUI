@@ -9,6 +9,8 @@ import {
   useState,
 } from "react"
 import {
+  motion,
+  AnimatePresence,
   useMotionValue,
   useTransform,
   useMotionValueEvent,
@@ -197,7 +199,11 @@ export function AppSwitcher({
         const isSwipeDown =
           totalDeltaY > SWIPE_DOWN_THRESHOLD_PX &&
           totalDeltaY > Math.abs(totalDeltaX)
-        shouldSelect = hasContainer && (isTap || isSwipeDown)
+        const isSwipeUp =
+          totalDeltaY < -SWIPE_UP_THRESHOLD_PX &&
+          Math.abs(totalDeltaY) > Math.abs(totalDeltaX)
+        shouldSelect =
+          hasContainer && (isTap || isSwipeDown) && !isSwipeUp
       } else {
         shouldSelect = !wasDragRef.current && hasPointerDown && hasContainer
       }
@@ -281,6 +287,7 @@ export function AppSwitcher({
         position: "relative",
         width: "100%",
         height: "100%",
+        maxHeight: "100vh",
         overflow: "hidden",
         cursor: showComponentView ? "default" : "grab",
         userSelect: "none",
@@ -288,10 +295,23 @@ export function AppSwitcher({
         ...style,
       }}
     >
-      {showComponentView ? (
-        <div
-          style={{ position: "absolute", inset: 0 }}
-          onPointerDown={(event) => {
+      <AnimatePresence mode="wait">
+        {showComponentView ? (
+          <motion.div
+            key="component"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: "tween", duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                touchAction: "pan-x",
+              }}
+              onPointerDown={(event) => {
             componentViewPointerDownRef.current = {
               clientX: event.clientX,
               clientY: event.clientY,
@@ -303,10 +323,11 @@ export function AppSwitcher({
                   pointerUpEvent.clientX - pointerDown.clientX
                 const totalDeltaY =
                   pointerUpEvent.clientY - pointerDown.clientY
-                if (
+                const isSwipeUp =
+                  totalDeltaY < 0 &&
                   totalDeltaY < -SWIPE_UP_THRESHOLD_PX &&
                   Math.abs(totalDeltaY) > Math.abs(totalDeltaX)
-                ) {
+                if (isSwipeUp) {
                   setActiveComponent(null)
                 }
               }
@@ -332,12 +353,28 @@ export function AppSwitcher({
           >
             Back
           </button>
-          <div style={{ width: "100%", height: "100%", overflow: "auto" }}>
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              overflow: "hidden",
+              touchAction: "pan-x",
+            }}
+          >
             {activeComponent}
           </div>
         </div>
-      ) : (
-        <RailView
+          </motion.div>
+        ) : (
+          <motion.div
+            key="rail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: "tween", duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <RailView
           onPointerDown={(pointerEvent) => {
             pointerDownRef.current = {
               clientX: pointerEvent.clientX,
@@ -362,8 +399,10 @@ export function AppSwitcher({
           fadeStartDistance={fadeStartDistance}
           cardWidth={cardWidth}
           cardHeight={cardHeight}
-        />
-      )}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

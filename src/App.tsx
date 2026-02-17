@@ -106,6 +106,7 @@ export default function App() {
         width: "100%",
         height: "100%",
         minHeight: "100vh",
+        maxHeight: "100vh",
       }}
     >
       <AppSwitcher
