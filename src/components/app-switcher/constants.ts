@@ -6,3 +6,4 @@ export const BASE_Z = 100
 
 export const CLICK_MOVEMENT_THRESHOLD_PX = 5
 export const SWIPE_DOWN_THRESHOLD_PX = 30
+export const SWIPE_UP_THRESHOLD_PX = 30

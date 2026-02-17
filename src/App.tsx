@@ -100,32 +100,37 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ textAlign: "center", marginBottom: 24 }}>
-        App Switcher
-      </h1>
-      <div
-        style={{
-          width: "100%",
-          height: 320,
-          margin: "0 auto",
-          border: "1px solid #ccc",
-        }}
-      >
-        <AppSwitcher
-          items={switcherItems}
-          stepWidth={200}
-          invertScroll={true}
-          scaleFactor={0.20}
-          fade={true}
-          fadeStartDistance={1}
-          cardWidth={260}
-          cardHeight={280}
-          onCardSelect={handleCardSelect}
-        />
-      </div>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        minHeight: "100vh",
+      }}
+    >
+      <AppSwitcher
+        items={switcherItems}
+        stepWidth={200}
+        invertScroll={true}
+        scaleFactor={0.20}
+        fade={true}
+        fadeStartDistance={1}
+        cardWidth={260}
+        cardHeight={280}
+        onCardSelect={handleCardSelect}
+      />
       {lastPath != null && (
-        <p style={{ textAlign: "center", marginTop: 8, color: "#64748b" }}>
+        <p
+          style={{
+            position: "absolute",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            margin: 0,
+            color: "#64748b",
+            fontSize: 14,
+          }}
+        >
           Last selected path: {lastPath} (use path to navigate in a real app)
         </p>
       )}

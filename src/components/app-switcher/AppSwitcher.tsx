@@ -20,6 +20,7 @@ import {
   CARD_WIDTH,
   CARD_HEIGHT,
   SWIPE_DOWN_THRESHOLD_PX,
+  SWIPE_UP_THRESHOLD_PX,
 } from "./constants"
 import { getCardIndexAtClientX } from "./utils"
 import { RailView } from "./RailView"
@@ -135,6 +136,10 @@ export function AppSwitcher({
   const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  const componentViewPointerDownRef = useRef<{
+    clientX: number
+    clientY: number
+  } | null>(null)
   const wasDragRef = useRef(false)
   const totalMovementRef = useRef(0)
 
@@ -284,7 +289,35 @@ export function AppSwitcher({
       }}
     >
       {showComponentView ? (
-        <>
+        <div
+          style={{ position: "absolute", inset: 0 }}
+          onPointerDown={(event) => {
+            componentViewPointerDownRef.current = {
+              clientX: event.clientX,
+              clientY: event.clientY,
+            }
+            const onPointerUp = (pointerUpEvent: PointerEvent) => {
+              const pointerDown = componentViewPointerDownRef.current
+              if (pointerDown) {
+                const totalDeltaX =
+                  pointerUpEvent.clientX - pointerDown.clientX
+                const totalDeltaY =
+                  pointerUpEvent.clientY - pointerDown.clientY
+                if (
+                  totalDeltaY < -SWIPE_UP_THRESHOLD_PX &&
+                  Math.abs(totalDeltaY) > Math.abs(totalDeltaX)
+                ) {
+                  setActiveComponent(null)
+                }
+              }
+              componentViewPointerDownRef.current = null
+              document.removeEventListener("pointerup", onPointerUp)
+              document.removeEventListener("pointercancel", onPointerUp)
+            }
+            document.addEventListener("pointerup", onPointerUp)
+            document.addEventListener("pointercancel", onPointerUp)
+          }}
+        >
           <button
             type="button"
             onClick={() => setActiveComponent(null)}
@@ -302,7 +335,7 @@ export function AppSwitcher({
           <div style={{ width: "100%", height: "100%", overflow: "auto" }}>
             {activeComponent}
           </div>
-        </>
+        </div>
       ) : (
         <RailView
           onPointerDown={(pointerEvent) => {
