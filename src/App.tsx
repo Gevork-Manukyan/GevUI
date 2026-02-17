@@ -1,5 +1,9 @@
+import { useState } from "react"
 import { motion } from "motion/react"
-import { AppSwitcher } from "./components/app-switcher"
+import {
+  AppSwitcher,
+  type AppSwitcherItem,
+} from "./components/app-switcher"
 
 const DEMO_COLORS = [
   "#3b82f6",
@@ -9,13 +13,7 @@ const DEMO_COLORS = [
   "#8b5cf6",
 ]
 
-function DemoCard({
-  index,
-  color,
-}: {
-  index: number
-  color: string
-}) {
+function DemoCard({ color, label }: { color: string; label: string }) {
   return (
     <motion.div
       style={{
@@ -32,35 +30,105 @@ function DemoCard({
         boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
       }}
     >
-      Card {index + 1}
+      {label}
     </motion.div>
   )
 }
 
+function SettingsPage() {
+  return (
+    <div
+      style={{
+        padding: 24,
+        height: "100%",
+        background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+        color: "#fff",
+        borderRadius: 12,
+      }}
+    >
+      <h2>Settings (component)</h2>
+      <p>This view was loaded via item.component. Use the Back button above to return.</p>
+    </div>
+  )
+}
+
+function ProfilePage() {
+  return (
+    <div
+      style={{
+        padding: 24,
+        height: "100%",
+        background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)",
+        color: "#fff",
+        borderRadius: 12,
+      }}
+    >
+      <h2>Profile (component)</h2>
+      <p>This view was loaded via item.component. Use the Back button above to return.</p>
+    </div>
+  )
+}
+
 export default function App() {
+  const [lastPath, setLastPath] = useState<string | null>(null)
+
+  const switcherItems: AppSwitcherItem[] = [
+    {
+      content: <DemoCard color={DEMO_COLORS[0]} label="Dashboard" />,
+      path: "/dashboard",
+    },
+    {
+      content: <DemoCard color={DEMO_COLORS[1]} label="Settings" />,
+      path: "/settings",
+      component: <SettingsPage />,
+    },
+    {
+      content: <DemoCard color={DEMO_COLORS[2]} label="Profile" />,
+      component: <ProfilePage />,
+    },
+    {
+      content: <DemoCard color={DEMO_COLORS[3]} label="Help" />,
+      path: "/help",
+    },
+    {
+      content: <DemoCard color={DEMO_COLORS[4]} label="Card 5" />,
+    },
+  ]
+
+  const handleCardSelect = (_index: number, item?: AppSwitcherItem) => {
+    if (item?.path != null) setLastPath(item.path)
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>
         App Switcher
       </h1>
-      <div style={{ width: "100%", height: 320, margin: "0 auto", border: "1px solid #ccc" }}>
-        <AppSwitcher 
-          stepWidth={200} 
+      <div
+        style={{
+          width: "100%",
+          height: 320,
+          margin: "0 auto",
+          border: "1px solid #ccc",
+        }}
+      >
+        <AppSwitcher
+          items={switcherItems}
+          stepWidth={200}
           invertScroll={true}
           scaleFactor={0.20}
           fade={true}
           fadeStartDistance={1}
           cardWidth={260}
           cardHeight={280}
-          onCardSelect={(index) => {
-            console.log("Card selected:", index)
-          }}
-        >
-          {DEMO_COLORS.map((color, i) => (
-            <DemoCard key={i} index={i} color={color} />
-          ))}
-        </AppSwitcher>
+          onCardSelect={handleCardSelect}
+        />
       </div>
+      {lastPath != null && (
+        <p style={{ textAlign: "center", marginTop: 8, color: "#64748b" }}>
+          Last selected path: {lastPath} (use path to navigate in a real app)
+        </p>
+      )}
     </div>
   )
 }
