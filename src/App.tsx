@@ -125,6 +125,7 @@ export default function App() {
           duration: 0.25,
           ease: [0.4, 0, 0.2, 1],
         }}
+        scrollSpeed={{ wheel: 1, swipe: 1, pointerDrag: 0.1 }}
         onCardSelect={handleCardSelect}
       />
       {lastPath != null && (

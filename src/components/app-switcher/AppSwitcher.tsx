@@ -76,6 +76,18 @@ export type AppSwitcherSnapToCenter = {
 }
 
 /**
+ * Per-input scroll speed multipliers. Omitted keys default to 1.
+ */
+export type AppSwitcherScrollSpeed = {
+  /** Wheel/trackpad horizontal scroll. */
+  wheel?: number
+  /** Touch swipe (drag). */
+  swipe?: number
+  /** Mouse (or pen) click-drag. */
+  pointerDrag?: number
+}
+
+/**
  * Props for the AppSwitcher infinite carousel component.
  */
 export type AppSwitcherProps = {
@@ -175,6 +187,11 @@ export type AppSwitcherProps = {
    * @default false
    */
   snapToCenter?: boolean | AppSwitcherSnapToCenter
+  /**
+   * Multiplier for how far the rail moves per unit input. Number = same for all inputs; object = per-input (omitted keys default to 1).
+   * @default 1
+   */
+  scrollSpeed?: number | AppSwitcherScrollSpeed
   /** Optional CSS class name applied to the root container. */
   className?: string
   /** Optional inline styles applied to the root container. */
@@ -207,6 +224,7 @@ export function AppSwitcher({
   dragMomentum = true,
   dragTransition,
   snapToCenter: snapToCenterProp = false,
+  scrollSpeed: scrollSpeedProp = 1,
   onCardSelect,
   className,
   style,
@@ -215,6 +233,18 @@ export function AppSwitcher({
   const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const wheelSnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const speedConfig = useMemo(
+    () =>
+      typeof scrollSpeedProp === "number"
+        ? { wheel: scrollSpeedProp, swipe: scrollSpeedProp, pointerDrag: scrollSpeedProp }
+        : {
+            wheel: scrollSpeedProp.wheel ?? 1,
+            swipe: scrollSpeedProp.swipe ?? 1,
+            pointerDrag: scrollSpeedProp.pointerDrag ?? 1,
+          },
+    [scrollSpeedProp],
+  )
 
   const snapConfig = useMemo<AppSwitcherSnapToCenter | null>(
     () =>
@@ -255,20 +285,25 @@ export function AppSwitcher({
   const itemCount = cardContents.length
   const scrollOffset = useMotionValue(0)
   const overlayX = useMotionValue(0)
+  const dragSpeedMultiplier = useMotionValue(1)
   const invertPointer = invertSwipe || invertDrag
   const dragOffset = useTransform(
-    [scrollOffset, overlayX],
-    ([scrollValue, overlayValue]: number[]) =>
-      (scrollValue ?? 0) + (invertPointer ? (overlayValue ?? 0) : -(overlayValue ?? 0)),
+    [scrollOffset, overlayX, dragSpeedMultiplier],
+    ([scrollValue, overlayValue, dragMult]: number[]) =>
+      (scrollValue ?? 0) +
+      (invertPointer ? (overlayValue ?? 0) : -(overlayValue ?? 0)) *
+        (dragMult ?? 1),
   )
   const dragControls = useDragControls()
 
   const flushOverlay = useCallback(() => {
     scrollOffset.set(
-      scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get()),
+      scrollOffset.get() +
+        (invertPointer ? overlayX.get() : -overlayX.get()) *
+          dragSpeedMultiplier.get(),
     )
     overlayX.set(0)
-  }, [scrollOffset, overlayX, invertPointer])
+  }, [scrollOffset, overlayX, invertPointer, dragSpeedMultiplier])
 
   const runSnap = useCallback(() => {
     if (snapConfig == null || activeComponent != null || itemCount === 0) return
@@ -361,7 +396,7 @@ export function AppSwitcher({
 
       if (shouldSelect && pointerDownRef.current && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect()
-        const totalOffset = scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get())
+        const totalOffset = dragOffset.get()
         const clientXForIndex =
           isSwipeDown ? rect.left + rect.width / 2 : pointerDownRef.current.clientX
         const index = getCardIndexAtClientX(
@@ -385,7 +420,9 @@ export function AppSwitcher({
           setActiveComponent(selectedItem.component)
         } else {
           scrollOffset.set(
-            scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
+            scrollOffset.get() +
+              (invertPointer ? overlayX.get() : -overlayX.get()) *
+                dragSpeedMultiplier.get(),
           )
           overlayX.set(0)
         }
@@ -396,9 +433,11 @@ export function AppSwitcher({
       totalMovementRef.current = 0
     },
     [
+      dragOffset,
       scrollOffset,
       overlayX,
       invertPointer,
+      dragSpeedMultiplier,
       stepWidth,
       itemCount,
       itemsProp,
@@ -411,6 +450,11 @@ export function AppSwitcher({
 
   const startDrag = useCallback(
     (pointerEvent: React.PointerEvent) => {
+      dragSpeedMultiplier.set(
+        pointerEvent.nativeEvent.pointerType === "touch"
+          ? speedConfig.swipe
+          : speedConfig.pointerDrag,
+      )
       overlayX.jump(overlayX.get())
       flushOverlay()
       dragControls.start(pointerEvent.nativeEvent)
@@ -423,7 +467,15 @@ export function AppSwitcher({
       document.addEventListener("pointerup", onPointerUp)
       document.addEventListener("pointercancel", onPointerUp)
     },
-    [dragControls, overlayX, flushOverlay, handleClickOrDragEnd],
+    [
+      dragControls,
+      overlayX,
+      flushOverlay,
+      handleClickOrDragEnd,
+      dragSpeedMultiplier,
+      speedConfig.swipe,
+      speedConfig.pointerDrag,
+    ],
   )
 
   useEffect(() => {
@@ -446,7 +498,7 @@ export function AppSwitcher({
       if (wheelEvent.deltaX !== 0) {
         wheelEvent.preventDefault()
         const delta = invertScroll ? wheelEvent.deltaX : -wheelEvent.deltaX
-        scrollOffset.set(scrollOffset.get() + delta)
+        scrollOffset.set(scrollOffset.get() + delta * speedConfig.wheel)
         if (snapConfig != null) {
           if (wheelSnapTimeoutRef.current != null)
             clearTimeout(wheelSnapTimeoutRef.current)
@@ -467,9 +519,7 @@ export function AppSwitcher({
       ) {
         const containerRect = containerRef.current?.getBoundingClientRect()
         if (!containerRect) return
-        const totalOffset =
-          scrollOffset.get() +
-          (invertPointer ? overlayX.get() : -overlayX.get())
+        const totalOffset = dragOffset.get()
         const containerCenterX = containerRect.left + containerRect.width / 2
         const centerIndex = getCardIndexAtClientX(
           containerCenterX,
@@ -497,9 +547,10 @@ export function AppSwitcher({
   }, [
     activeComponent,
     scrollOffset,
-    overlayX,
+    dragOffset,
     invertScroll,
     invertPointer,
+    speedConfig.wheel,
     itemsProp,
     stepWidth,
     itemCount,
