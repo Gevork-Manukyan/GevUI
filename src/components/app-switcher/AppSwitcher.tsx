@@ -265,31 +265,34 @@ export function AppSwitcher({
       if (shouldSelect && pointerDownRef.current && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect()
         const totalOffset = scrollOffset.get() + (invertPointer ? overlayX.get() : -overlayX.get())
+        const clientXForIndex =
+          isSwipeDown ? rect.left + rect.width / 2 : pointerDownRef.current.clientX
         const index = getCardIndexAtClientX(
-          pointerDownRef.current.clientX,
+          clientXForIndex,
           { left: rect.left, width: rect.width },
           totalOffset,
           stepWidth,
           itemCount,
         )
-        scrollOffset.set(
-          scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
-        )
-        overlayX.set(0)
         const selectedItem = itemsProp?.[index]
-        onCardSelect?.(index, selectedItem)
-
         const shouldEnterComponent = hasPointerUp
           ? (isTap && tapToEnterComponent) ||
             (isSwipeDown && swipeDownToEnterComponent)
           : tapToEnterComponent
-        if (
+        const enteringComponent =
           showComponentOnSelect &&
           selectedItem?.component &&
           shouldEnterComponent
-        ) {
+
+        if (enteringComponent) {
           setActiveComponent(selectedItem.component)
+        } else {
+          scrollOffset.set(
+            scrollOffset.get() - (invertPointer ? overlayX.get() : -overlayX.get()),
+          )
+          overlayX.set(0)
         }
+        onCardSelect?.(index, selectedItem)
       }
       pointerDownRef.current = null
       wasDragRef.current = false
