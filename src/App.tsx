@@ -118,7 +118,13 @@ export default function App() {
         fadeStartDistance={1}
         cardWidth={260}
         cardHeight={280}
-        dragTransition={{ power: 0.1, bounceStiffness: 300, bounceDamping: 25 }}
+        dragTransition={{ power: 0.2, bounceStiffness: 0, timeConstant: 200, bounceDamping: 25 }}
+        snapToCenter={{
+          delayMs: 1000,
+          thresholdPx: 5,
+          duration: 0.25,
+          ease: [0.4, 0, 0.2, 1],
+        }}
         onCardSelect={handleCardSelect}
       />
       {lastPath != null && (

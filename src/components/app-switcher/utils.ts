@@ -9,6 +9,17 @@ export function getPositionInWindow(
 export type ContainerRect = { left: number; width: number }
 
 /**
+ * Returns the offset (px) at which the nearest card is centered.
+ * Same as Math.round(offsetPx / stepWidth) * stepWidth.
+ */
+export function getNearestCardCenterOffsetPx(
+  offsetPx: number,
+  stepWidth: number,
+): number {
+  return Math.round(offsetPx / stepWidth) * stepWidth
+}
+
+/**
  * Returns the logical card index (0 to itemCount - 1) whose center is closest to the given clientX.
  * Uses the same layout math as CardSlot for consistency.
  */

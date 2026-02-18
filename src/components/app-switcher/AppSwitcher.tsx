@@ -26,7 +26,7 @@ import {
   SCROLL_DOWN_THRESHOLD_PX,
   SCROLL_UP_THRESHOLD_PX,
 } from "./constants"
-import { getCardIndexAtClientX } from "./utils"
+import { getCardIndexAtClientX, getNearestCardCenterOffsetPx } from "./utils"
 import { RailView } from "./RailView"
 
 /**
@@ -54,6 +54,25 @@ export type AppSwitcherDragTransition = {
   bounceStiffness?: number
   /** Damping of the bounce at the end of the inertia. */
   bounceDamping?: number
+}
+
+/**
+ * Config for snap-to-center: when scrolling stops, animate the rail so the nearest card centers.
+ * Omitted properties use defaults. Tween (duration/ease) takes precedence over spring if duration is set.
+ */
+export type AppSwitcherSnapToCenter = {
+  /** Debounce delay (ms) after last wheel event before snapping. Not used for drag (snap runs when momentum ends). */
+  delayMs?: number
+  /** Only snap if current offset is more than this many px from the nearest card center. */
+  thresholdPx?: number
+  /** Tween duration in seconds. If set, tween is used and ease can be set. */
+  duration?: number
+  /** Easing for tween (e.g. [0.4, 0, 0.2, 1] or "easeOut"). Used when duration is set. */
+  ease?: number[] | string
+  /** Spring stiffness. Used when duration is not set. */
+  stiffness?: number
+  /** Spring damping. Used when duration is not set. */
+  damping?: number
 }
 
 /**
@@ -151,6 +170,11 @@ export type AppSwitcherProps = {
    * Optional config to tune the momentum/inertia feel when dragMomentum is true. Passed to Motion's dragTransition.
    */
   dragTransition?: AppSwitcherDragTransition
+  /**
+   * When true or a config object, when scrolling (wheel or drag) stops, the rail animates so the nearest card is centered.
+   * @default false
+   */
+  snapToCenter?: boolean | AppSwitcherSnapToCenter
   /** Optional CSS class name applied to the root container. */
   className?: string
   /** Optional inline styles applied to the root container. */
@@ -182,6 +206,7 @@ export function AppSwitcher({
   scrollUpToExitComponent = true,
   dragMomentum = true,
   dragTransition,
+  snapToCenter: snapToCenterProp = false,
   onCardSelect,
   className,
   style,
@@ -189,6 +214,17 @@ export function AppSwitcher({
   const [containerWidth, setContainerWidth] = useState(0)
   const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const wheelSnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const snapConfig = useMemo<AppSwitcherSnapToCenter | null>(
+    () =>
+      snapToCenterProp === true
+        ? { delayMs: 120, thresholdPx: 2, stiffness: 300, damping: 30 }
+        : typeof snapToCenterProp === "object" && snapToCenterProp != null
+          ? snapToCenterProp
+          : null,
+    [snapToCenterProp],
+  )
   const pointerDownRef = useRef<{ clientX: number; clientY: number } | null>(null)
   const componentViewPointerDownRef = useRef<{
     clientX: number
@@ -234,7 +270,68 @@ export function AppSwitcher({
     overlayX.set(0)
   }, [scrollOffset, overlayX, invertPointer])
 
-  useMotionValueEvent(overlayX, "animationComplete", flushOverlay)
+  const runSnap = useCallback(() => {
+    if (snapConfig == null || activeComponent != null || itemCount === 0) return
+    const currentOffset = scrollOffset.get()
+    const targetOffset = getNearestCardCenterOffsetPx(currentOffset, stepWidth)
+    const thresholdPx = snapConfig.thresholdPx ?? 0
+    if (Math.abs(currentOffset - targetOffset) <= thresholdPx) return
+    const stiffness = snapConfig.stiffness ?? 300
+    const damping = snapConfig.damping ?? 30
+    const duration = snapConfig.duration
+    const ease = snapConfig.ease ?? [0.4, 0, 0.2, 1]
+
+    if (duration != null && duration > 0) {
+      const startOffset = scrollOffset.get()
+      const startTime = performance.now()
+      const durationMs = duration * 1000
+      const step = (): void => {
+        const elapsed = performance.now() - startTime
+        const t = Math.min(elapsed / durationMs, 1)
+        const easedT =
+          typeof ease === "string"
+            ? t
+            : 1 - (1 - t) ** 3
+        scrollOffset.set(startOffset + (targetOffset - startOffset) * easedT)
+        if (t < 1) requestAnimationFrame(step)
+      }
+      requestAnimationFrame(step)
+    } else {
+      const startOffset = scrollOffset.get()
+      const startVelocity = 0
+      let velocity = startVelocity
+      let position = startOffset
+      const step = (): void => {
+        const delta = targetOffset - position
+        const springForce = delta * (stiffness / 100)
+        const dampingForce = -velocity * (damping / 10)
+        velocity += springForce + dampingForce
+        position += velocity * 0.016
+        scrollOffset.set(position)
+        if (Math.abs(delta) > 0.5 || Math.abs(velocity) > 0.5)
+          requestAnimationFrame(step)
+      }
+      requestAnimationFrame(step)
+    }
+  }, [
+    snapConfig,
+    activeComponent,
+    itemCount,
+    scrollOffset,
+    stepWidth,
+  ])
+
+  const runSnapRef = useRef(runSnap)
+  useEffect(() => {
+    runSnapRef.current = runSnap
+  }, [runSnap])
+
+  const flushOverlayThenSnap = useCallback(() => {
+    flushOverlay()
+    runSnapRef.current()
+  }, [flushOverlay])
+
+  useMotionValueEvent(overlayX, "animationComplete", flushOverlayThenSnap)
 
   const handleClickOrDragEnd = useCallback(
     (pointerUpEvent?: PointerEvent) => {
@@ -350,6 +447,14 @@ export function AppSwitcher({
         wheelEvent.preventDefault()
         const delta = invertScroll ? wheelEvent.deltaX : -wheelEvent.deltaX
         scrollOffset.set(scrollOffset.get() + delta)
+        if (snapConfig != null) {
+          if (wheelSnapTimeoutRef.current != null)
+            clearTimeout(wheelSnapTimeoutRef.current)
+          wheelSnapTimeoutRef.current = setTimeout(() => {
+            runSnapRef.current()
+            wheelSnapTimeoutRef.current = null
+          }, snapConfig.delayMs ?? 120)
+        }
       }
       const scrollDownIntent =
         wheelEvent.deltaY > SCROLL_DOWN_THRESHOLD_PX &&
@@ -382,7 +487,13 @@ export function AppSwitcher({
       }
     }
     containerElement.addEventListener("wheel", onWheel, { passive: false })
-    return () => containerElement.removeEventListener("wheel", onWheel)
+    return () => {
+      if (wheelSnapTimeoutRef.current != null) {
+        clearTimeout(wheelSnapTimeoutRef.current)
+        wheelSnapTimeoutRef.current = null
+      }
+      containerElement.removeEventListener("wheel", onWheel)
+    }
   }, [
     activeComponent,
     scrollOffset,
@@ -392,6 +503,7 @@ export function AppSwitcher({
     itemsProp,
     stepWidth,
     itemCount,
+    snapConfig,
     scrollDownToEnterComponent,
     scrollUpToExitComponent,
     showComponentOnSelect,
