@@ -118,6 +118,7 @@ export default function App() {
         fadeStartDistance={1}
         cardWidth={260}
         cardHeight={280}
+        dragTransition={{ power: 0.1, bounceStiffness: 300, bounceDamping: 25 }}
         onCardSelect={handleCardSelect}
       />
       {lastPath != null && (

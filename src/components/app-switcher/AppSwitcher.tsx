@@ -23,6 +23,8 @@ import {
   CARD_HEIGHT,
   SWIPE_DOWN_THRESHOLD_PX,
   SWIPE_UP_THRESHOLD_PX,
+  SCROLL_DOWN_THRESHOLD_PX,
+  SCROLL_UP_THRESHOLD_PX,
 } from "./constants"
 import { getCardIndexAtClientX } from "./utils"
 import { RailView } from "./RailView"
@@ -126,6 +128,16 @@ export type AppSwitcherProps = {
    */
   swipeDownToEnterComponent?: boolean
   /**
+   * When true (default), scrolling down on the rail enters the center card's component.
+   * When false, vertical scroll on the rail does not enter the component.
+   */
+  scrollDownToEnterComponent?: boolean
+  /**
+   * When true (default), scrolling up on the component view exits back to the carousel.
+   * When false, vertical scroll on the component view does not exit.
+   */
+  scrollUpToExitComponent?: boolean
+  /**
    * Called when the user clicks a card (pointer down + up with minimal movement).
    * Receives the logical card index (0 to itemCount - 1) and, when using the `items` prop, the selected item. Not called when the user drags.
    */
@@ -166,6 +178,8 @@ export function AppSwitcher({
   showComponentOnSelect = true,
   tapToEnterComponent = true,
   swipeDownToEnterComponent = true,
+  scrollDownToEnterComponent = true,
+  scrollUpToExitComponent = true,
   dragMomentum = true,
   dragTransition,
   onCardSelect,
@@ -316,15 +330,70 @@ export function AppSwitcher({
     const containerElement = containerRef.current
     if (!containerElement) return
     const onWheel = (wheelEvent: WheelEvent) => {
+      const inComponentView = activeComponent != null
+
+      if (inComponentView) {
+        const scrollUpIntent =
+          wheelEvent.deltaY < -SCROLL_UP_THRESHOLD_PX &&
+          Math.abs(wheelEvent.deltaY) > Math.abs(wheelEvent.deltaX)
+        if (scrollUpIntent && scrollUpToExitComponent) {
+          wheelEvent.preventDefault()
+          setActiveComponent(null)
+        }
+        return
+      }
+
       if (wheelEvent.deltaX !== 0) {
         wheelEvent.preventDefault()
         const delta = invertScroll ? wheelEvent.deltaX : -wheelEvent.deltaX
         scrollOffset.set(scrollOffset.get() + delta)
       }
+      const scrollDownIntent =
+        wheelEvent.deltaY > SCROLL_DOWN_THRESHOLD_PX &&
+        wheelEvent.deltaY > Math.abs(wheelEvent.deltaX)
+      if (
+        scrollDownIntent &&
+        scrollDownToEnterComponent &&
+        itemsProp != null &&
+        showComponentOnSelect
+      ) {
+        const containerRect = containerRef.current?.getBoundingClientRect()
+        if (!containerRect) return
+        const totalOffset =
+          scrollOffset.get() +
+          (invertPointer ? overlayX.get() : -overlayX.get())
+        const containerCenterX = containerRect.left + containerRect.width / 2
+        const centerIndex = getCardIndexAtClientX(
+          containerCenterX,
+          { left: containerRect.left, width: containerRect.width },
+          totalOffset,
+          stepWidth,
+          itemCount,
+        )
+        const selectedItem = itemsProp[centerIndex]
+        if (selectedItem?.component) {
+          wheelEvent.preventDefault()
+          onCardSelect?.(centerIndex, selectedItem)
+          setActiveComponent(selectedItem.component)
+        }
+      }
     }
     containerElement.addEventListener("wheel", onWheel, { passive: false })
     return () => containerElement.removeEventListener("wheel", onWheel)
-  }, [scrollOffset, invertScroll])
+  }, [
+    activeComponent,
+    scrollOffset,
+    overlayX,
+    invertScroll,
+    invertPointer,
+    itemsProp,
+    stepWidth,
+    itemCount,
+    scrollDownToEnterComponent,
+    scrollUpToExitComponent,
+    showComponentOnSelect,
+    onCardSelect,
+  ])
 
   if (itemCount === 0) return null
 
