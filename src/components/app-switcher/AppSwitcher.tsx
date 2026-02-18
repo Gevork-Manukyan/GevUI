@@ -101,6 +101,16 @@ export type AppSwitcherProps = {
    */
   showComponentOnSelect?: boolean
   /**
+   * When true (default), tapping a card whose item has a `component` enters the component view.
+   * When false, tap still selects (onCardSelect fires) but does not open the component.
+   */
+  tapToEnterComponent?: boolean
+  /**
+   * When true (default), swiping down on a card whose item has a `component` enters the component view.
+   * When false, swipe-down still selects (onCardSelect fires) but does not open the component.
+   */
+  swipeDownToEnterComponent?: boolean
+  /**
    * Called when the user clicks a card (pointer down + up with minimal movement).
    * Receives the logical card index (0 to itemCount - 1) and, when using the `items` prop, the selected item. Not called when the user drags.
    */
@@ -130,6 +140,8 @@ export function AppSwitcher({
   cardWidth = CARD_WIDTH,
   cardHeight = CARD_HEIGHT,
   showComponentOnSelect = true,
+  tapToEnterComponent = true,
+  swipeDownToEnterComponent = true,
   onCardSelect,
   className,
   style,
@@ -191,12 +203,14 @@ export function AppSwitcher({
       const hasContainer = containerRef.current != null
 
       let shouldSelect: boolean
+      let isTap = false
+      let isSwipeDown = false
       const pointerDown = pointerDownRef.current
       if (hasPointerUp && pointerDown) {
         const totalDeltaX = pointerUpEvent.clientX - pointerDown.clientX
         const totalDeltaY = pointerUpEvent.clientY - pointerDown.clientY
-        const isTap = !wasDragRef.current
-        const isSwipeDown =
+        isTap = !wasDragRef.current
+        isSwipeDown =
           totalDeltaY > SWIPE_DOWN_THRESHOLD_PX &&
           totalDeltaY > Math.abs(totalDeltaX)
         const isSwipeUp =
@@ -224,7 +238,16 @@ export function AppSwitcher({
         overlayX.set(0)
         const selectedItem = itemsProp?.[index]
         onCardSelect?.(index, selectedItem)
-        if (showComponentOnSelect && selectedItem?.component) {
+
+        const shouldEnterComponent = hasPointerUp
+          ? (isTap && tapToEnterComponent) ||
+            (isSwipeDown && swipeDownToEnterComponent)
+          : tapToEnterComponent
+        if (
+          showComponentOnSelect &&
+          selectedItem?.component &&
+          shouldEnterComponent
+        ) {
           setActiveComponent(selectedItem.component)
         }
       }
@@ -240,6 +263,8 @@ export function AppSwitcher({
       itemCount,
       itemsProp,
       showComponentOnSelect,
+      tapToEnterComponent,
+      swipeDownToEnterComponent,
       onCardSelect,
     ],
   )
