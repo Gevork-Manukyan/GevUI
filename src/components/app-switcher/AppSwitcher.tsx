@@ -40,6 +40,21 @@ export type AppSwitcherItem = {
 }
 
 /**
+ * Options to tune drag momentum/inertia when the user releases. Passed to Motion's dragTransition.
+ * Omitted properties use Motion's defaults.
+ */
+export type AppSwitcherDragTransition = {
+  /** Affects how far the drag continues after release. */
+  power?: number
+  /** Time constant for velocity decay. */
+  timeConstant?: number
+  /** Stiffness of the bounce at the end of the inertia. */
+  bounceStiffness?: number
+  /** Damping of the bounce at the end of the inertia. */
+  bounceDamping?: number
+}
+
+/**
  * Props for the AppSwitcher infinite carousel component.
  */
 export type AppSwitcherProps = {
@@ -115,6 +130,15 @@ export type AppSwitcherProps = {
    * Receives the logical card index (0 to itemCount - 1) and, when using the `items` prop, the selected item. Not called when the user drags.
    */
   onCardSelect?: (index: number, item?: AppSwitcherItem) => void
+  /**
+   * When true (default), drag continues with inertia after release. When false, drag stops immediately.
+   * @default true
+   */
+  dragMomentum?: boolean
+  /**
+   * Optional config to tune the momentum/inertia feel when dragMomentum is true. Passed to Motion's dragTransition.
+   */
+  dragTransition?: AppSwitcherDragTransition
   /** Optional CSS class name applied to the root container. */
   className?: string
   /** Optional inline styles applied to the root container. */
@@ -142,6 +166,8 @@ export function AppSwitcher({
   showComponentOnSelect = true,
   tapToEnterComponent = true,
   swipeDownToEnterComponent = true,
+  dragMomentum = true,
+  dragTransition,
   onCardSelect,
   className,
   style,
@@ -424,6 +450,8 @@ export function AppSwitcher({
           fadeStartDistance={fadeStartDistance}
           cardWidth={cardWidth}
           cardHeight={cardHeight}
+          dragMomentum={dragMomentum}
+          dragTransition={dragTransition}
             />
           </motion.div>
         )}

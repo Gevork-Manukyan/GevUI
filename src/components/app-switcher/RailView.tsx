@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { motion, type MotionValue } from "motion/react"
 import type { DragControls, PanInfo } from "motion/react"
+import type { AppSwitcherDragTransition } from "./AppSwitcher"
 import { CLICK_MOVEMENT_THRESHOLD_PX } from "./constants"
 import { Rail } from "./Rail"
 
@@ -21,6 +22,8 @@ export type RailViewProps = {
   fadeStartDistance: number
   cardWidth: number
   cardHeight: number
+  dragMomentum?: boolean
+  dragTransition?: AppSwitcherDragTransition
 }
 
 export function RailView({
@@ -40,6 +43,8 @@ export function RailView({
   fadeStartDistance,
   cardWidth,
   cardHeight,
+  dragMomentum = true,
+  dragTransition,
 }: RailViewProps) {
   return (
     <>
@@ -61,6 +66,8 @@ export function RailView({
         dragElastic={0.1}
         dragListener={false}
         dragControls={dragControls}
+        dragMomentum={dragMomentum}
+        {...(dragTransition != null && { dragTransition })}
         onDrag={(_event: PointerEvent, info: PanInfo) => {
           totalMovementRef.current += info.delta.x
           if (Math.abs(totalMovementRef.current) > CLICK_MOVEMENT_THRESHOLD_PX) {
