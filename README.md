@@ -1,4 +1,4 @@
-# Gevs-Components
+# GevUI
 
 Custom React components for Next.js (and other React apps). This repo is the place to develop and demo them; components are built with Vite + React here and can be copied into a Next.js app or consumed as a package later.
 
