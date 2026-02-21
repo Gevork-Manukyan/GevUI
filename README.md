@@ -1,73 +1,85 @@
-# React + TypeScript + Vite
+# Gevs-Components
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Custom React components for Next.js (and other React apps). This repo is the place to develop and demo them; components are built with Vite + React here and can be copied into a Next.js app or consumed as a package later.
 
-Currently, two official plugins are available:
+## Components
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### AppSwitcher
 
-## React Compiler
+Infinite horizontal carousel in the style of the iPhone app switcher: the center card is largest and on top; cards to the left and right scale down and sit behind. Input is via touch swipe, mouse/trackpad drag, or horizontal wheel scroll, with optional momentum and snap-to-center.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Content (pick one)**
 
-## Expanding the ESLint configuration
+- **`children`** — Each direct child is one card. Use when you only need the carousel.
+- **`items`** — Array of `AppSwitcherItem`: each has `content` (ReactNode) and optional `path` (string) and `component` (ReactNode). When a card is selected, `onCardSelect(index, item)` runs; if the item has a `component`, the carousel can show that view with a Back control (see `showComponentOnSelect`).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**Main props**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Layout**: `stepWidth`, `scaleFactor`, `cardWidth`, `cardHeight` — spacing and scaling; `scaleFactor` controls how much cards shrink away from center.
+- **Scroll direction**: `invertSwipe`, `invertDrag`, `invertScroll` — flip direction per input type.
+- **Scroll feel**: `scrollSpeed` (number or `{ wheel?, swipe?, pointerDrag? }`), `dragMomentum`, `dragTransition` (power, timeConstant, bounceStiffness, bounceDamping).
+- **Snap**: `snapToCenter` — `true` or a config object (`delayMs`, `thresholdPx`, `duration`, `ease` or spring `stiffness`/`damping`).
+- **Visual**: `fade`, `fadeStartDistance` — opacity near edges.
+- **Component view** (when using `items`): `showComponentOnSelect`, `tapToEnterComponent`, `swipeDownToEnterComponent`, `scrollDownToEnterComponent`, `scrollUpToExitComponent`.
+- **Callback**: `onCardSelect(index, item?)` — fired when a card is clicked (not when the user drags).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+**Exports**
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+`AppSwitcher`, `AppSwitcherItem`, `AppSwitcherProps`, `AppSwitcherDragTransition`, `AppSwitcherSnapToCenter`, `AppSwitcherScrollSpeed` from [src/components/app-switcher/index.ts](src/components/app-switcher/index.ts). Full JSDoc is in [AppSwitcher.tsx](src/components/app-switcher/AppSwitcher.tsx).
+
+**Examples**
+
+With `items` (recommended when you need paths or detail views):
+
+```tsx
+import { AppSwitcher, type AppSwitcherItem } from "@/components/app-switcher"
+
+const items: AppSwitcherItem[] = [
+  { content: <MyCard label="A" />, path: "/a" },
+  { content: <MyCard label="B" />, component: <SettingsView /> },
+]
+
+<AppSwitcher
+  items={items}
+  stepWidth={200}
+  cardWidth={260}
+  cardHeight={280}
+  snapToCenter={{ delayMs: 300, duration: 0.25 }}
+  onCardSelect={(index, item) => console.log(item?.path)}
+/>
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+With `children` (simple carousel, no paths or component views):
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```tsx
+<AppSwitcher stepWidth={200} cardWidth={260} cardHeight={280}>
+  <MyCard label="A" />
+  <MyCard label="B" />
+  <MyCard label="C" />
+</AppSwitcher>
 ```
+
+**Using in your own app (e.g. Next.js)**
+
+1. Copy the whole `src/components/app-switcher` folder into your app (e.g. as `components/app-switcher`). Keep all files (AppSwitcher.tsx, Rail.tsx, RailView.tsx, CardSlot.tsx, constants.ts, utils.ts, index.ts).
+2. Install the dependency: `npm install motion`
+3. Wrap the component in a container with a defined size (it fills its parent). For example: `<div style={{ width: "100%", height: "100vh" }}><AppSwitcher ... /></div>`
+4. Import from your copy: `import { AppSwitcher, type AppSwitcherItem } from "@/components/app-switcher"` (adjust the path to match your folder).
+
+## Getting started
+
+```bash
+npm install
+npm run dev
+```
+
+This runs the Vite dev server so you can try the components (e.g. the AppSwitcher demo in the default app). To use a component in another app, see the instructions in that component’s section above.
+
+## Tech
+
+- React, TypeScript
+- [Motion](https://motion.dev/) (Framer Motion) for AppSwitcher animations
+
+## Project structure
+
+Components live under `src/components/<component-name>/`, for example `src/components/app-switcher/`.
